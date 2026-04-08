@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>SATIŞ MİNİ MARKET POS</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #121212; margin: 0; padding: 0 0 70px 0; color: #eee; }
+        .app-header { background: #1e2a3a; color: #ffc107; padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; position: sticky; top: 0; z-index: 100; }
+        .logo-area { display: flex; align-items: center; gap: 8px; background: #0f1a24; padding: 5px 12px; border-radius: 40px; }
+        .logo-icon { width: 36px; height: 36px; background: #ffc107; color: #1e2a3a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
+        .title-sales { text-align: center; font-size: 0.9rem; background: #0f1a24; padding: 6px 12px; border-radius: 30px; }
+        .title-sales span { color: #ffc107; font-size: 1rem; }
+        .tab-bar { display: flex; background: #0f1a24; position: sticky; top: 70px; z-index: 99; flex-wrap: wrap; }
+        .tab-btn { flex: 1; text-align: center; padding: 10px 5px; background: #1e2a3a; color: #ccc; border: none; font-size: 12px; cursor: pointer; border-bottom: 3px solid transparent; }
+        .tab-btn.active { background: #2c3e50; color: #ffc107; border-bottom-color: #ffc107; }
+        .tab-content { display: none; padding: 15px; }
+        .tab-content.active { display: block; }
+        .card { background: #1e2a3a; border-radius: 16px; padding: 15px; margin-bottom: 15px; }
+        button, .btn { background: #ffc107; color: #1e2a3a; border: none; padding: 12px; border-radius: 30px; font-weight: bold; width: 100%; margin-top: 5px; cursor: pointer; }
+        button.danger { background: #e74c3c; color: white; }
+        button.success { background: #27ae60; color: white; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px; background: #2c3e50; color: white; border: 1px solid #444; }
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .product-item, .company-item, .cart-item { background: #0f1a24; padding: 12px; border-radius: 14px; margin-bottom: 8px; border-left: 5px solid #ffc107; }
+        .debt-red { color: #ff5555; font-weight: bold; font-size: 1.3rem; }
+        .paid-green { color: #55ff55; }
+        .total-purchased-blue { color: #55aaff; }
+        .badge { background: #e67e22; padding: 2px 8px; border-radius: 20px; font-size: 12px; }
+        .total-cart { text-align: right; font-size: 1.2rem; color: #ffc107; }
+        .scanner-area { background: #0a121c; padding: 10px; border-radius: 16px; margin-bottom: 15px; }
+        #reader-add, #reader-sell { width: 100%; max-width: 500px; margin: 0 auto; background: black; border-radius: 12px; min-height: 300px; }
+        footer { text-align: center; padding: 15px; font-size: 11px; background: #0f1a24; position: fixed; bottom: 0; width: 100%; }
+        .error-msg { background: #e74c3c; padding: 8px; border-radius: 10px; margin: 10px 0; text-align: center; }
+        .info-msg { background: #2980b9; padding: 8px; border-radius: 10px; margin: 10px 0; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="app-header">
+    <div class="logo-area"><div class="logo-icon">SG</div><div class="logo-text">Security Group</div></div>
+    <div class="title-sales">SATIŞ MİNİ MARKET POS<br><span>📊 Gündəlik: <span id="headerTodaySales">0</span> ₼</span></div>
+    <div style="width:50px;"></div>
+</div>
+<div class="tab-bar">
+    <button class="tab-btn active" data-tab="home">🏠 Ana</button>
+    <button class="tab-btn" data-tab="add-stock">📥 Mədaxil</button>
+    <button class="tab-btn" data-tab="sell">🛒 Satış</button>
+    <button class="tab-btn" data-tab="companies">🏢 Şirkətlər</button>
+    <button class="tab-btn" data-tab="reports">📈 Hesabat</button>
+</div>
+
+<div id="home" class="tab-content active">
+    <div class="card"><h3>📦 Anbarda qalan mallar (stok ≤5 xəbərdarlıq)</h3><div id="productListHome"></div>
+    <input type="text" id="searchProductHome" placeholder="Axtar (ad/barkod)" onkeyup="filterProductsHome()"><div id="searchResultsHome"></div></div>
+</div>
+<div id="add-stock" class="tab-content">
+    <div class="card"><h3>📷 Barkod oxut (Mədaxil)</h3>
+    <button id="startScanAddBtn" class="btn success"><i class="fas fa-camera"></i> Kameranı aç</button>
+    <div id="scanAddArea" style="display:none;"><div id="reader-add"></div><button id="stopScanAddBtn" class="danger">Dayandır</button></div>
+    <div id="cameraAddError" class="error-msg" style="display:none;"></div>
+    <hr><h4>Məlumatlar</h4>
+    <div class="flex-row"><input type="text" id="manualBarcodeAdd" placeholder="Barkod əl ilə"><button id="findProductAddBtn" class="btn">Tap</button></div>
+    <div id="productInfoAdd" style="background:#0f1a24; padding:12px; border-radius:14px;">Məhsul seçilməyib</div>
+    <input type="number" id="addQuantity" placeholder="Miqdar" value="1">
+    <input type="number" id="addCostPrice" placeholder="Alış qiyməti (₼)" step="0.01">
+    <input type="number" id="addSalePrice" placeholder="Satış qiyməti (₼)" step="0.01">
+    <button id="confirmAddBtn" class="btn success">Mədaxil et</button></div>
+</div>
+<div id="sell" class="tab-content">
+    <div class="card"><h3>📷 Barkodla satış</h3>
+    <button id="startScanSellBtn" class="btn success"><i class="fas fa-camera"></i> Kameranı aç</button>
+    <div id="scanSellArea" style="display:none;"><div id="reader-sell"></div><button id="stopScanSellBtn" class="danger">Dayandır</button></div>
+    <div id="cameraSellError" class="error-msg" style="display:none;"></div>
+    <hr><div class="flex-row"><input type="text" id="manualBarcodeSell" placeholder="Barkod əl ilə"><button id="addToCartBtn" class="btn">Səbətə at</button></div>
+    <div id="cartItems"></div><div class="total-cart" id="cartTotal">Cəmi: 0 ₼</div>
+    <button id="completeSaleBtn" class="btn success">Satışı tamamla</button></div>
+</div>
+<div id="companies" class="tab-content">
+    <div class="card"><h3>➕ Yeni şirkət</h3><input id="companyName" placeholder="Ad"><input id="companyPhone" placeholder="Telefon"><button id="addCompanyBtn" class="btn success">Əlavə et</button></div>
+    <div class="card"><h3>📋 Şirkətlər və maliyyə</h3><div id="companyList"></div></div>
+    <div class="card"><h3>💰 Şirkətə ödəniş</h3><select id="paymentCompanySelect"></select><input type="number" id="paymentAmount" placeholder="Məbləğ (₼)"><button id="makePaymentBtn" class="btn">Ödəniş et</button></div>
+</div>
+<div id="reports" class="tab-content">
+    <div class="card"><h3>📊 Hesabatlar</h3><div class="flex-row"><button id="dailyReportBtn" class="btn">Gündəlik</button><button id="monthlyReportBtn" class="btn">Aylıq</button><button id="yearlyReportBtn" class="btn">İllik</button></div><div id="reportResult" style="margin-top:15px; background:#0f1a24; padding:12px; border-radius:14px;"></div></div>
+</div>
+<footer><i class="fas fa-shield-alt"></i> Security group tərəfindən yaradılmışdır və bütün haqları qorunur.</footer>
+
+<script>
+    // ======================== DATA MODELS ========================
+    let companies = [], products = [], sales = [], cart = [];
+    function loadData() {
+        const c = localStorage.getItem("market_companies"); if(c) companies = JSON.parse(c);
+        const p = localStorage.getItem("market_products"); if(p) products = JSON.parse(p);
+        const s = localStorage.getItem("market_sales"); if(s) sales = JSON.parse(s);
+        updateBalances();
+    }
+    function saveCompanies() { localStorage.setItem("market_companies", JSON.stringify(companies)); }
+    function saveProducts() { localStorage.setItem("market_products", JSON.stringify(products)); }
+    function saveSales() { localStorage.setItem("market_sales", JSON.stringify(sales)); }
+    function updateBalances() { companies.forEach(c => { c.balance = (c.totalPurchased||0) - (c.totalPaid||0); }); saveCompanies(); }
+    function getCompanyName(id) { let c = companies.find(c=>c.id==id); return c ? c.name : "Naməlum"; }
+    function checkLowStock() {
+        let low = products.filter(p=>p.quantity<=5);
+        if(low.length && !window.lowStockNotified) { alert("⚠️ Stok ≤5:\n"+low.map(p=>`${p.name} (${p.quantity})`).join("\n")); window.lowStockNotified=true; setTimeout(()=>window.lowStockNotified=false,10000); }
+        renderHomeProducts();
+    }
+    function renderHomeProducts() {
+        let container = document.getElementById("productListHome");
+        if(!container) return;
+        let html = products.map(p=>`<div class="product-item"><b>${p.name}</b> (${p.barcode})<br> Satış: ${p.price} ₼ | ${p.quantity<=5?`<span class="badge">⚠️ ${p.quantity}</span>`:`Stok: ${p.quantity}`}<br> Şirkət: ${getCompanyName(p.companyId)}</div>`).join("");
+        container.innerHTML = html || "<i>Məhsul yoxdur</i>";
+        filterProductsHome();
+    }
+    function filterProductsHome() {
+        let search = document.getElementById("searchProductHome")?.value.toLowerCase();
+        let container = document.getElementById("searchResultsHome");
+        if(!container) return;
+        let filtered = products.filter(p=>p.name.toLowerCase().includes(search) || p.barcode.includes(search));
+        if(search && search.length){
+            container.innerHTML = filtered.map(p=>`<div class="product-item"><b>${p.name}</b> | ${p.barcode}<br> Say: ${p.quantity} | Satış: ${p.price} ₼ | Alış: ${p.costPrice} ₼<br> Şirkət: ${getCompanyName(p.companyId)}</div>`).join("") || "<i>Nəticə yoxdur</i>";
+        } else container.innerHTML = "";
+    }
+    function renderCompanies() {
+        let container = document.getElementById("companyList");
+        if(!container) return;
+        let html = companies.map(c=>`<div class="company-item"><b>${c.name}</b> (Tel: ${c.phone||'-'})<br><span class="total-purchased-blue">📦 Ümumi alış: ${(c.totalPurchased||0).toFixed(2)} ₼</span><br><span class="paid-green">✅ Ödənilən: ${(c.totalPaid||0).toFixed(2)} ₼</span><br><span class="debt-red">💳 Cari borc: ${(c.balance||0).toFixed(2)} ₼</span><br><button class="btn warning" onclick="showCompanyProducts(${c.id})">Mallar</button></div>`).join("");
+        container.innerHTML = html || "Şirkət yoxdur";
+        let select = document.getElementById("paymentCompanySelect");
+        if(select) { select.innerHTML = '<option value="">Seçin</option>'+companies.map(c=>`<option value="${c.id}">${c.name}</option>`).join(""); }
+    }
+    window.showCompanyProducts = function(companyId) {
+        let comp = companies.find(c=>c.id==companyId);
+        let msg = `${comp.name} malları:\n` + products.filter(p=>p.companyId==companyId).map(p=>`${p.name} | Stok:${p.quantity} | Satış:${p.price} ₼ | Alış:${p.costPrice} ₼`).join("\n");
+        alert(msg);
+    };
+    function findProductByBarcode(barcode) { return products.find(p=>p.barcode===barcode); }
+    let currentAddProduct = null;
+    document.getElementById("findProductAddBtn")?.addEventListener("click", ()=>{
+        let barcode = document.getElementById("manualBarcodeAdd").value.trim();
+        if(!barcode) return alert("Barkod daxil edin");
+        let prod = findProductByBarcode(barcode);
+        if(!prod && confirm("Məhsul tapılmadı. Yenisini yaradırsınız?")) {
+            if(companies.length===0) { alert("Əvvəlcə şirkət əlavə edin!"); return; }
+            let name = prompt("Ad:");
+            let salePrice = parseFloat(prompt("Satış qiyməti:"));
+            if(!name || isNaN(salePrice)) return;
+            let compList = companies.map((c,i)=>`${i+1}. ${c.name}`).join("\n");
+            let idx = parseInt(prompt(`Şirkət seçin:\n${compList}\nNömrə:`))-1;
+            let companyId = (idx>=0 && idx<companies.length) ? companies[idx].id : null;
+            if(!companyId) return;
+            prod = { barcode, name, price: salePrice, quantity: 0, companyId, costPrice: 0 };
+            products.push(prod);
+            saveProducts();
+        }
+        if(prod) { currentAddProduct=prod; document.getElementById("productInfoAdd").innerHTML = `<b>${prod.name}</b> | Stok:${prod.quantity} | Şirkət:${getCompanyName(prod.companyId)}<br><span style="color:#ffc107;">Cari satış qiyməti: ${prod.price} ₼</span>`; }
+    });
+    document.getElementById("confirmAddBtn")?.addEventListener("click", ()=>{
+        if(!currentAddProduct) return alert("Məhsul seçilməyib");
+        let qty = parseInt(document.getElementById("addQuantity").value);
+        let cost = parseFloat(document.getElementById("addCostPrice").value);
+        let newPrice = parseFloat(document.getElementById("addSalePrice").value);
+        if(isNaN(qty)||qty<=0) return alert("Miqdar düzgün deyil");
+        if(!isNaN(newPrice) && newPrice>0) currentAddProduct.price = newPrice;
+        currentAddProduct.quantity += qty;
+        currentAddProduct.costPrice = cost;
+        let company = companies.find(c=>c.id==currentAddProduct.companyId);
+        if(company) { company.totalPurchased = (company.totalPurchased||0) + qty*cost; company.balance = (company.totalPurchased)-(company.totalPaid||0); saveCompanies(); }
+        saveProducts();
+        renderHomeProducts(); renderCompanies();
+        alert(`${currentAddProduct.name} - ${qty} ədəd mədaxil edildi. Yeni stok: ${currentAddProduct.quantity}`);
+        document.getElementById("addQuantity").value=1; document.getElementById("addCostPrice").value=""; document.getElementById("addSalePrice").value="";
+        currentAddProduct=null; document.getElementById("productInfoAdd").innerHTML="Məhsul seçilməyib";
+        checkLowStock();
+    });
+    // Səbət
+    function renderCart() { let total=0; let html=cart.map((item,idx)=> { let t=item.quantity*item.price; total+=t; return `<div class="cart-item"><b>${item.name}</b> | ${item.quantity} x ${item.price}₼ = ${t}₼ <button class="danger" style="width:auto;padding:2px 8px;" onclick="removeFromCart(${idx})"><i class="fas fa-trash"></i></button></div>`; }).join(""); document.getElementById("cartItems").innerHTML = html || "Səbət boşdur"; document.getElementById("cartTotal").innerHTML = `Cəmi: ${total.toFixed(2)} ₼`; }
+    window.removeFromCart = function(idx){ cart.splice(idx,1); renderCart(); };
+    function addToCartByBarcode(barcode){
+        let product = findProductByBarcode(barcode);
+        if(!product){ alert("Məhsul bazada yoxdur!"); return false; }
+        if(product.quantity<=0){ alert("Stokda yoxdur!"); return false; }
+        let existing = cart.find(i=>i.barcode===barcode);
+        if(existing){ if(product.quantity < existing.quantity+1){ alert("Anbar kifayət deyil"); return false; } existing.quantity++; }
+        else { cart.push({ barcode, name: product.name, quantity:1, price: product.price }); }
+        renderCart(); return true;
+    }
+    document.getElementById("addToCartBtn")?.addEventListener("click",()=>{ let barcode = document.getElementById("manualBarcodeSell").value.trim(); if(barcode) addToCartByBarcode(barcode); else alert("Barkod daxil edin"); });
+    document.getElementById("completeSaleBtn")?.addEventListener("click",()=>{
+        if(cart.length===0) return alert("Səbət boşdur");
+        let totalAmount=0, saleItems=[];
+        for(let item of cart){
+            let product = findProductByBarcode(item.barcode);
+            if(!product || product.quantity<item.quantity){ alert(`${item.name} üçün stok yetərli deyil`); return; }
+            totalAmount += item.quantity*item.price;
+            saleItems.push({ barcode:item.barcode, name:item.name, quantity:item.quantity, price:item.price });
+            product.quantity -= item.quantity;
+        }
+        sales.push({ id:Date.now(), date:new Date().toISOString(), totalAmount, items:saleItems });
+        saveProducts(); saveSales(); cart=[]; renderCart(); renderHomeProducts(); checkLowStock();
+        alert(`Satış tamam! Məbləğ: ${totalAmount.toFixed(2)} ₼`);
+        updateTodaySalesDisplay();
+    });
+    // ======================== KAMERA SKANER (MÜKƏMMƏL) ========================
+    let html5QrCodeAdd = null, html5QrCodeSell = null;
+    function stopAllScanners(){
+        if(html5QrCodeAdd) { html5QrCodeAdd.stop().catch(e=>{}); html5QrCodeAdd = null; }
+        if(html5QrCodeSell) { html5QrCodeSell.stop().catch(e=>{}); html5QrCodeSell = null; }
+        document.getElementById("scanAddArea") && (document.getElementById("scanAddArea").style.display = "none");
+        document.getElementById("scanSellArea") && (document.getElementById("scanSellArea").style.display = "none");
+    }
+    // Birbaşa kamera icazəsi testi
+    async function requestCameraPermission() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            stream.getTracks().forEach(track => track.stop());
+            return true;
+        } catch (err) {
+            console.error("Kamera icazə xətası:", err);
+            return false;
+        }
+    }
+    async function startScanner(elementId, onSuccess, onError, errorDivId) {
+        try {
+            const hasPermission = await requestCameraPermission();
+            if (!hasPermission) throw new Error("Kamera icazəsi verilmədi. Brauzer parametrlərindən icazəni aktivləşdirin.");
+            const scanner = new Html5Qrcode(elementId);
+            const config = { fps: 10, qrbox: { width: 300, height: 300 } };
+            await scanner.start({ facingMode: { exact: "environment" } }, config, onSuccess, onError);
+            return scanner;
+        } catch (err) {
+            let msg = err.message;
+            if (err.name === "NotAllowedError") msg = "Kamera icazəsi bloklanıb. Zəhmət olmasa brauzer parametrlərindən icazə verin.";
+            else if (err.name === "NotFoundError") msg = "Telefonunuzda kamera tapılmadı.";
+            else if (err.message.includes("exact")) msg = "Arxa kamera tapılmadı. Ön kameranı istifadə edin.";
+            else msg = "Kamera açılmadı: " + (err.message || "bilinməyən xəta");
+            if (errorDivId) document.getElementById(errorDivId).innerHTML = "⚠️ " + msg + ". Əl ilə daxil edin.";
+            console.error(err);
+            return null;
+        }
+    }
+    // Mədaxil skaneri
+    document.getElementById("startScanAddBtn")?.addEventListener("click", async () => {
+        stopAllScanners();
+        document.getElementById("scanAddArea").style.display = "block";
+        document.getElementById("cameraAddError").innerHTML = "";
+        const scanner = await startScanner("reader-add",
+            (decoded) => {
+                document.getElementById("manualBarcodeAdd").value = decoded;
+                document.getElementById("findProductAddBtn").click();
+                if (html5QrCodeAdd) { html5QrCodeAdd.stop(); html5QrCodeAdd = null; }
+                document.getElementById("scanAddArea").style.display = "none";
+            },
+            (err) => { console.log("skan xətası", err); },
+            "cameraAddError"
+        );
+        if (scanner) html5QrCodeAdd = scanner;
+        else document.getElementById("scanAddArea").style.display = "none";
+    });
+    // Satış skaneri
+    document.getElementById("startScanSellBtn")?.addEventListener("click", async () => {
+        stopAllScanners();
+        document.getElementById("scanSellArea").style.display = "block";
+        document.getElementById("cameraSellError").innerHTML = "";
+        const scanner = await startScanner("reader-sell",
+            (decoded) => {
+                document.getElementById("manualBarcodeSell").value = decoded;
+                addToCartByBarcode(decoded);
+                if (html5QrCodeSell) { html5QrCodeSell.stop(); html5QrCodeSell = null; }
+                document.getElementById("scanSellArea").style.display = "none";
+            },
+            (err) => { console.log(err); },
+            "cameraSellError"
+        );
+        if (scanner) html5QrCodeSell = scanner;
+        else document.getElementById("scanSellArea").style.display = "none";
+    });
+    document.getElementById("stopScanAddBtn")?.addEventListener("click", () => { if(html5QrCodeAdd) { html5QrCodeAdd.stop(); html5QrCodeAdd=null; } document.getElementById("scanAddArea").style.display="none"; });
+    document.getElementById("stopScanSellBtn")?.addEventListener("click", () => { if(html5QrCodeSell) { html5QrCodeSell.stop(); html5QrCodeSell=null; } document.getElementById("scanSellArea").style.display="none"; });
+    // Şirkət əməliyyatları
+    document.getElementById("addCompanyBtn")?.addEventListener("click",()=>{
+        let name = document.getElementById("companyName").value.trim();
+        let phone = document.getElementById("companyPhone").value.trim();
+        if(!name) return alert("Şirkət adı vacib");
+        companies.push({ id:Date.now(), name, phone, totalPurchased:0, totalPaid:0, balance:0 });
+        saveCompanies(); renderCompanies();
+        document.getElementById("companyName").value=""; document.getElementById("companyPhone").value="";
+        alert("Şirkət əlavə edildi");
+    });
+    document.getElementById("makePaymentBtn")?.addEventListener("click",()=>{
+        let compId = parseInt(document.getElementById("paymentCompanySelect").value);
+        let amount = parseFloat(document.getElementById("paymentAmount").value);
+        if(!compId || isNaN(amount) || amount<=0) return alert("Düzgün məlumat daxil edin");
+        let company = companies.find(c=>c.id===compId);
+        if(company){ company.totalPaid = (company.totalPaid||0)+amount; company.balance = (company.totalPurchased||0)-company.totalPaid; saveCompanies(); renderCompanies(); alert(`${company.name} şirkətinə ${amount}₼ ödəniş edildi. Borc: ${company.balance.toFixed(2)}₼`); document.getElementById("paymentAmount").value=""; }
+        else alert("Şirkət tapılmadı");
+    });
+    // Hesabatlar
+    function getSalesByPeriod(start,end){ return sales.filter(s=>{ let d=new Date(s.date); return d>=start && d<=end; }).reduce((sum,s)=>sum+s.totalAmount,0); }
+    function updateTodaySalesDisplay(){
+        let today=new Date(); today.setHours(0,0,0,0); let tomorrow=new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+        let total=getSalesByPeriod(today,tomorrow);
+        document.getElementById("headerTodaySales") && (document.getElementById("headerTodaySales").innerText = total.toFixed(2));
+    }
+    document.getElementById("dailyReportBtn")?.addEventListener("click",()=>{ let t=new Date(); t.setHours(0,0,0,0); let tm=new Date(t); tm.setDate(tm.getDate()+1); document.getElementById("reportResult").innerHTML=`<b>Gündəlik satış:</b> ${getSalesByPeriod(t,tm).toFixed(2)} ₼`; });
+    document.getElementById("monthlyReportBtn")?.addEventListener("click",()=>{ let now=new Date(); let start=new Date(now.getFullYear(),now.getMonth(),1); let end=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59); document.getElementById("reportResult").innerHTML=`<b>Aylıq satış:</b> ${getSalesByPeriod(start,end).toFixed(2)} ₼`; });
+    document.getElementById("yearlyReportBtn")?.addEventListener("click",()=>{ let now=new Date(); let start=new Date(now.getFullYear(),0,1); let end=new Date(now.getFullYear(),11,31,23,59,59); document.getElementById("reportResult").innerHTML=`<b>İllik satış:</b> ${getSalesByPeriod(start,end).toFixed(2)} ₼`; });
+    // Tab keçid
+    let btns=document.querySelectorAll(".tab-btn"), contents=document.querySelectorAll(".tab-content");
+    btns.forEach(btn=>{ btn.addEventListener("click",()=>{ let tabId=btn.getAttribute("data-tab"); btns.forEach(b=>b.classList.remove("active")); btn.classList.add("active"); contents.forEach(c=>c.classList.remove("active")); document.getElementById(tabId).classList.add("active"); if(tabId==="home") updateTodaySalesDisplay(); if(tabId==="companies") renderCompanies(); stopAllScanners(); }); });
+    // İlkin yükləmə
+    loadData(); renderHomeProducts(); renderCompanies(); updateTodaySalesDisplay(); checkLowStock();
+    setInterval(()=>{ checkLowStock(); updateTodaySalesDisplay(); }, 60000);
+</script>
+</body>
+</html>
