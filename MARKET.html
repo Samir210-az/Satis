@@ -120,6 +120,89 @@
         }
     </style>
 </head>
+
+<!-- ===================== LİSENZİYA SİSTEMİ ===================== -->
+<script>
+// BÜTÜN KÖHNƏ LİSENZİYA MƏLUMATLARINI TƏMİZLƏ
+localStorage.removeItem('lic_key');
+localStorage.removeItem('lic_date');
+localStorage.removeItem('app_license_key');
+localStorage.removeItem('app_license_date');
+
+// LİSENZİYA AÇARLARI
+const VALID_KEYS = [
+    "LIC-7K2M9-Q1P3F-8R2A",
+    "LIC-X9P2L-8D4H6-7J3K",
+    "LIC-J6UZ7-CQ3R3-0V5N",
+    "LIC-HMPLW-V9QQA-HS18",
+    "LIC-C9ARA-41885-0000",
+    "LIC-T4C0L-PEWNF-KB5U",
+    "LIC-PKTHA-M7ZA0-GR1H",
+    "LIC-75W2N-WHTLP-4LMY"
+];
+
+// DƏRHAL PƏRDƏ GÖSTƏR
+(function() {
+    // Əgər artıq təsdiqlənibsə və 1 il keçməyibsə, keç
+    let stored = localStorage.getItem('license_ok');
+    let storedDate = localStorage.getItem('license_date');
+    
+    if (stored === 'yes' && storedDate) {
+        let days = (new Date() - new Date(storedDate)) / (1000*60*60*24);
+        if (days <= 365) {
+            return; // Lisenziya var, heç nə göstərmə
+        }
+    }
+    
+    // BÜTÜN SƏHİFƏNİ ÖRTƏN PƏRDƏ
+    let overlay = document.createElement('div');
+    overlay.id = 'licenseOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0f1c;z-index:9999999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
+    overlay.innerHTML = `
+        <div style="background:white;max-width:380px;width:90%;border-radius:28px;padding:35px 25px;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+            <div style="font-size:50px;margin-bottom:10px;">🔐</div>
+            <h2 style="color:#1e2a3a;margin-bottom:8px;">Lisenziya Tələb Olunur</h2>
+            <p style="color:#666;margin-bottom:25px;font-size:14px;">Bu proqram lisenziya əsasında işləyir</p>
+            <input type="text" id="licenseKeyInput" placeholder="Lisenziya açarı" style="width:100%;padding:14px;border:2px solid #e2e8f0;border-radius:60px;margin-bottom:20px;text-align:center;font-family:monospace;font-size:14px;box-sizing:border-box;">
+            <button id="licenseSubmitBtn" style="background:#1e2a3a;color:white;border:none;padding:14px;width:100%;border-radius:60px;font-weight:bold;font-size:16px;cursor:pointer;">✅ Təsdiqlə</button>
+            <div id="licenseMessage" style="margin-top:18px;font-size:13px;color:#e74c3c;"></div>
+            <div style="margin-top:20px;font-size:11px;color:#94a3b8;">📅 Lisenziya müddəti: 1 il</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    // Bütün əvvəlki məzmunu gizlət
+    let style = document.createElement('style');
+    style.textContent = 'body > *:not(#licenseOverlay) { display: none; }';
+    document.head.appendChild(style);
+    
+    document.getElementById('licenseSubmitBtn').onclick = function() {
+        let input = document.getElementById('licenseKeyInput');
+        let key = input.value.trim().toUpperCase();
+        let msg = document.getElementById('licenseMessage');
+        
+        if (VALID_KEYS.includes(key)) {
+            localStorage.setItem('license_ok', 'yes');
+            localStorage.setItem('license_date', new Date().toISOString());
+            msg.style.color = '#27ae60';
+            msg.innerHTML = '✅ Lisenziya təsdiqləndi! Səhifə yenilənir...';
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            msg.innerHTML = '❌ Etibarsız lisenziya açarı!';
+            input.style.borderColor = '#e74c3c';
+        }
+    };
+    
+    document.getElementById('licenseKeyInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') document.getElementById('licenseSubmitBtn').click();
+    });
+})();
+</script>
+<!-- =================== LİSENZİYA SİSTEMİ SONU =================== -->
+
+    
 <body>
 <div class="container">
     <div class="salon-header">
